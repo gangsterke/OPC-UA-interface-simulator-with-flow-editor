@@ -1,0 +1,14 @@
+node_modules/
+out/
+dist/
+release/
+*.pfx
+*.log
+.DS_Store
+*.tsbuildinfo
+
+# Saved test projects (may reference your own PLC's address/tags) - keep these local
+*.ifsim.json
+
+# Local Claude Code tool settings, not meant to be shared
+.claude/
