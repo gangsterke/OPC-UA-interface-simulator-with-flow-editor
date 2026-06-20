@@ -13,6 +13,8 @@ Built and tested against a Siemens S7-1500, but the app talks plain OPC UA - it 
 
 <img width="610" height="457" alt="image" src="https://github.com/user-attachments/assets/13f57e7f-98e1-4c53-bff8-df7d257c834d" />
 
+<img width="610" height="457" alt="image" src="https://github.com/user-attachments/assets/f8d03345-4925-4342-9b78-313dae919391" />
+
 
 ## Features
 
