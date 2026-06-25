@@ -19,14 +19,40 @@ Built and tested against a Siemens S7-1500, but the app talks plain OPC UA - it 
 - **Certificate trust UX** - guided reject → trust → retry flow for secure (Sign/SignAndEncrypt) connections, plus exporting the client's own certificate to hand to whoever administers the PLC
 - **Address space browser** - lazy, one-level-at-a-time tree browsing
 - **Tags panel** - drag a `Variable` node from the tree to define a named tag, with a live value preview
-- **Methods panel** - drag a `Method` node from the tree to define a callable method, reading its declared input/output arguments from the server; a "Test call…" button lets you invoke it manually with literal inputs and see its decoded outputs, without building a sequence
+- **Methods panel** - drag a `Method` node from the tree to define a callable method and test-call it directly; see [Methods](#methods) below
 - **Signal flow / test sequence** - drag-and-drop or dropdown-driven steps:
   - **Write** a value to a tag, sourced from a constant, another tag's live value, or a prior Call Method step's captured output
-  - **Wait/Assert** until a condition is true (optionally two conditions combined with AND/OR). Each condition's subject can be a tag's live value or a method, re-invoked on every poll just like a tag is re-read (e.g. "wait until getMachineSpeed() returns >= 100" with no tag involved at all), compared against a constant, another tag's live value, a prior Call Method step's captured output, or - the "changed" comparison - simply waiting for the subject's value to differ from what it was when the step started, with an optional timeout or none at all
-  - **Call Method** - invoke an OPC UA method with input arguments sourced from a constant, a tag, or a prior Call Method step's captured output, and capture its output arguments for later steps to use. This models the Siemens "PLC as requester" message-buffer handshake (PLC increments a sequence tag → Wait/Assert "changed" detects it → Call Method reads the request → Call Method echoes a response built from that output) - see Siemens Entry-ID 109795979 for the reference pattern.
+  - **Wait/Assert** until a condition is true (optionally two conditions combined with AND/OR). Each condition's subject can be a tag's live value or a method call, compared against a constant, another tag's live value, a prior Call Method step's captured output, or - the "changed" comparison - simply waiting for the subject's value to differ from what it was when the step started, with an optional timeout or none at all
+  - **Call Method** - invoke an OPC UA method as a sequence step; see [Methods](#methods) below
   - **Delay** for a fixed duration
 - **Run engine** - live per-step results, a scrolling log, cancellation, and an optional "loop until stopped" mode
 - **Projects** - save/open a connection + tags + methods + sequence as a single `.ifsim.json` file (passwords are never written to disk)
+
+## Methods
+
+Methods are OPC UA's RPC-style calls (as opposed to tags, which are just read/written values), and the app treats them as a first-class citizen alongside tags.
+
+### Adding and test-calling a method
+
+Drag a `Method` node from the address-space browser into the **Methods panel** to define it. The app reads its declared input and output arguments straight from the server (names, data types, scalar vs. array) and shows them immediately - no need to call it first to see what it expects.
+
+Each method has a built-in **Call** button right there in the panel: type literal values into its input fields and click Call to invoke it directly against the connected server, with the decoded output shown right below. This is the fastest way to check what a method actually does before wiring it into a sequence.
+
+### Using methods in a test sequence
+
+- **Call Method step** - pick a defined method, supply each input argument, run the call, and capture its outputs for later steps to reference.
+- **Wait/Assert step** - a condition's subject isn't limited to a tag. Choose "method call" instead and the method is **re-invoked on every poll**, exactly like a tag is re-read on every poll - e.g. "wait until `getMachineSpeed()` returns >= 100" with no tag involved at all.
+- Any input argument (for a Call Method step or a polled Wait/Assert method) can itself be sourced from a constant, a tag's live value, or a prior Call Method step's captured output.
+
+### Chaining outputs and drilling into structured values
+
+A method's captured output - or a tag's own live value - can be fed into a later step's Write value, Wait/Assert comparison, or another method's input argument. When that value is a **structured or array value** (e.g. a custom UDT, or an array-of-structs tag like an "Alarms" list), an optional path drills into one specific field or element instead of using the whole thing - for example `chamberState.actValue` for a nested field, or `3.value` for the 4th array element's `value` field. Leave the path blank to pass the whole value through untouched.
+
+This whole-value passthrough is what makes the Siemens **"PLC as requester"** message-buffer handshake (Entry-ID 109795979) straightforward to reproduce: the PLC increments a sequence tag → a Wait/Assert step's "changed" comparison detects it → a Call Method step reads the request envelope → a second Call Method step echoes a response built from that same envelope, with no re-typing of its structure along the way.
+
+### Current limitations (v1)
+
+- Constant input values are supported for builtin scalar types only (Boolean/Int*/UInt*/Float/Double/String/DateTime/ByteString/Guid). A structured or array-valued argument is shown as such but isn't directly editable as a literal - use field-path drilling (above) to get at its individual fields instead.
 
 ## Requirements
 
@@ -71,6 +97,4 @@ scripts/       # one-off build asset generator (app icon)
 ## Notes
 
 - The OPC UA client's certificate/private key live under the OS user data directory, not inside the app install or any project file - they're machine-scoped, not project-scoped.
-- Method arguments are supported for builtin scalar types (Boolean/Int*/UInt*/Float/Double/String/DateTime/ByteString/Guid). Custom/structured (UDT) or array-valued arguments are shown but not editable as a constant in this version.
-- A structured/array value - a method output, or a tag itself (e.g. an array-of-structs "Alarms" tag) - can still be used elsewhere: when sourcing a value from it, an optional path (e.g. `chamberState.actValue`, or `3.value` for the 4th array element's value field) drills into one field/element - leave it blank to pass the whole value through untouched (needed for the PLC-requester pattern, where a structured "envelope" output is fed straight into another method's input of the same type).
 - Saved `.ifsim.json` projects are plain JSON (diffable, git-friendly) but will contain your endpoint URL and tag names - avoid committing real project files to a shared/public repo.
