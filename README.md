@@ -36,6 +36,9 @@ Methods are OPC UA's RPC-style calls (as opposed to tags, which are just read/wr
 
 Drag a `Method` node from the address-space browser into the **Methods panel** to define it. The app reads its declared input and output arguments straight from the server (names, data types, scalar vs. array) and shows them immediately - no need to call it first to see what it expects.
 
+<img width="407" height="468" alt="image" src="https://github.com/user-attachments/assets/ebd25ffb-5590-4bd2-93d5-e091ca00abf8" />
+
+
 Each method has a built-in **Call** button right there in the panel: type literal values into its input fields and click Call to invoke it directly against the connected server, with the decoded output shown right below. This is the fastest way to check what a method actually does before wiring it into a sequence.
 
 ### Using methods in a test sequence
@@ -43,6 +46,8 @@ Each method has a built-in **Call** button right there in the panel: type litera
 - **Call Method step** - pick a defined method, supply each input argument, run the call, and capture its outputs for later steps to reference.
 - **Wait/Assert step** - a condition's subject isn't limited to a tag. Choose "method call" instead and the method is **re-invoked on every poll**, exactly like a tag is re-read on every poll - e.g. "wait until `getMachineSpeed()` returns >= 100" with no tag involved at all.
 - Any input argument (for a Call Method step or a polled Wait/Assert method) can itself be sourced from a constant, a tag's live value, or a prior Call Method step's captured output.
+
+<img width="717" height="222" alt="image" src="https://github.com/user-attachments/assets/b66df227-7373-43c3-8877-79c10455b942" />
 
 ### Chaining outputs and drilling into structured values
 
