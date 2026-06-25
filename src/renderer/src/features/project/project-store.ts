@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { useConnectionStore, DEFAULT_CONNECTION_PROFILE } from "../connection/connection-store";
 import { useTagsStore } from "../tags/tags-store";
+import { useMethodsStore } from "../methods/methods-store";
 import { useSequenceStore } from "../sequence/sequence-store";
 import type { Project, ProjectMetadata } from "@shared/models/project";
 
@@ -35,6 +36,7 @@ async function buildProject(lastMetadata: ProjectMetadata | null): Promise<Proje
     },
     connectionProfile: useConnectionStore.getState().profile,
     tags: useTagsStore.getState().tags,
+    methods: useMethodsStore.getState().methods,
     sequence: useSequenceStore.getState().steps,
   };
 }
@@ -42,6 +44,7 @@ async function buildProject(lastMetadata: ProjectMetadata | null): Promise<Proje
 function applyProject(project: Project): void {
   useConnectionStore.getState().setProfile(project.connectionProfile);
   useTagsStore.getState().setTags(project.tags);
+  useMethodsStore.getState().setMethods(project.methods);
   useSequenceStore.getState().setSteps(project.sequence);
 }
 
@@ -62,6 +65,9 @@ export const useProjectStore = create<ProjectStoreState>((set, get) => ({
     useTagsStore.subscribe((state, prev) => {
       if (!suppressDirty && state.tags !== prev.tags) set({ isDirty: true });
     });
+    useMethodsStore.subscribe((state, prev) => {
+      if (!suppressDirty && state.methods !== prev.methods) set({ isDirty: true });
+    });
     useSequenceStore.subscribe((state, prev) => {
       if (!suppressDirty && state.steps !== prev.steps) set({ isDirty: true });
     });
@@ -71,6 +77,7 @@ export const useProjectStore = create<ProjectStoreState>((set, get) => ({
     suppressDirty = true;
     useConnectionStore.getState().setProfile(DEFAULT_CONNECTION_PROFILE);
     useTagsStore.getState().setTags([]);
+    useMethodsStore.getState().setMethods([]);
     useSequenceStore.getState().setSteps([]);
     suppressDirty = false;
     set({ filePath: null, isDirty: false, lastMetadata: null, lastError: null });

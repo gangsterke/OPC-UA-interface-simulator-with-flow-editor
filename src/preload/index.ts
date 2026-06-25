@@ -37,8 +37,13 @@ const api: Api = {
   tag: {
     readValue: (reference: TagNodeReference) => ipcRenderer.invoke(IpcChannels.Tag.ReadValue, reference),
   },
+  method: {
+    readArguments: (objectNodeId: string, methodNodeId: string) =>
+      ipcRenderer.invoke(IpcChannels.Method.ReadArguments, objectNodeId, methodNodeId),
+    testCall: (method, inputArguments) => ipcRenderer.invoke(IpcChannels.Method.TestCall, method, inputArguments),
+  },
   run: {
-    start: (steps, tags) => ipcRenderer.invoke(IpcChannels.Run.Start, { steps, tags }),
+    start: (steps, tags, methods) => ipcRenderer.invoke(IpcChannels.Run.Start, { steps, tags, methods }),
     cancel: (runId: string) => ipcRenderer.invoke(IpcChannels.Run.Cancel, runId),
     onStepStarted: (callback) => subscribe(IpcChannels.Run.StepStarted, callback),
     onStepProgress: (callback) => subscribe(IpcChannels.Run.StepProgress, callback),

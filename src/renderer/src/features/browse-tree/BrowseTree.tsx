@@ -25,7 +25,7 @@ export function BrowseTree() {
       <legend>Address Space</legend>
       {!isConnected && <p style={{ color: "#666" }}>Connect to an OPC UA server to browse its address space.</p>}
       {error && <p style={{ color: "#c92a2a" }}>{error}</p>}
-      {isConnected && root && <BrowseTreeNodeRow node={root} depth={0} />}
+      {isConnected && root && <BrowseTreeNodeRow node={root} depth={0} parentNodeId={root.nodeId} />}
     </fieldset>
   );
 }

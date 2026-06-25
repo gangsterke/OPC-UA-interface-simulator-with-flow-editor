@@ -8,6 +8,7 @@ import { registerConnectionHandlers } from "./ipc/connection-handlers";
 import { registerPkiHandlers } from "./ipc/pki-handlers";
 import { registerBrowseHandlers } from "./ipc/browse-handlers";
 import { registerTagHandlers } from "./ipc/tag-handlers";
+import { registerMethodHandlers } from "./ipc/method-handlers";
 import { registerRunHandlers } from "./ipc/run-handlers";
 import { registerProjectHandlers } from "./ipc/project-handlers";
 import { RunEngine } from "./execution/run-engine";
@@ -67,6 +68,7 @@ app.whenReady().then(async () => {
   registerPkiHandlers(certificateManager);
   registerBrowseHandlers(opcUaService);
   registerTagHandlers(opcUaService);
+  registerMethodHandlers(opcUaService);
   registerRunHandlers(opcUaService, runEngine);
   registerProjectHandlers();
 

@@ -1,12 +1,20 @@
-import { AttributeIds } from "node-opcua";
+import { AttributeIds, type Variant } from "node-opcua";
 import type { WaitAssertStep, WaitCondition, Comparison, ToleranceMode } from "@shared/models/sequence-step";
 import type { StepResult } from "@shared/models/run-result";
 import type { RunContext } from "./step-executor";
 import { nowIso, durationMs, raceWithCancellation, CANCELLED } from "./step-executor";
 import { resolveNodeIdFromTagReference } from "../../opcua/node-id-utils";
-import { toTagValueDto } from "../../opcua/value-serialization";
+import { callMethod } from "../../opcua/method-service";
+import { toTagValueDto, variantToScalar } from "../../opcua/value-serialization";
+import { resolveStepOutputScalar, resolveValueSourceVariant } from "./value-source";
 
 type ScalarValue = string | number | boolean;
+
+// undefined = baseline not captured yet (first poll); null/scalar = the value
+// observed on that first poll, kept for the rest of this step's execution.
+interface ChangeBaseline {
+  value: ScalarValue | null | undefined;
+}
 
 function compareValues(
   actual: ScalarValue | null,
@@ -46,18 +54,68 @@ function errorResult(step: WaitAssertStep, startedAt: string, message: string): 
 interface ConditionEvaluation {
   ok: boolean;
   actual: ScalarValue | null;
-  expected: ScalarValue;
+  expected: ScalarValue | null;
   describe: string;
 }
 
-async function evaluateCondition(condition: WaitCondition, ctx: RunContext): Promise<ConditionEvaluation> {
+// The condition's subject: either a tag's live value (read once per poll) or
+// a method's output (the method is re-invoked once per poll, exactly like a
+// tag is re-read - lets "wait until" target a method directly, e.g. "wait
+// until getMachineSpeed() returns >= 100" with no tag involved at all).
+async function readSubject(condition: WaitCondition, ctx: RunContext): Promise<{ actual: ScalarValue | null; label: string }> {
+  if (condition.subjectSource === "method") {
+    const { methodId, methodOutputIndex, methodInputArguments } = condition.methodSubject;
+    if (!methodId) throw new Error("No method selected");
+    const method = ctx.methods.get(methodId);
+    if (!method) throw new Error("Method not found");
+
+    const objectNodeId = await resolveNodeIdFromTagReference(ctx.session, method.objectNode);
+    const methodNodeId = await resolveNodeIdFromTagReference(ctx.session, method.methodNode);
+    const inputVariants: Variant[] = [];
+    for (let index = 0; index < method.inputArguments.length; index++) {
+      const argumentMeta = method.inputArguments[index];
+      const source = methodInputArguments[index];
+      if (!source) throw new Error(`Missing a value for input argument "${argumentMeta.name}"`);
+      inputVariants.push(await resolveValueSourceVariant(source, argumentMeta.dataType, ctx));
+    }
+
+    const result = await callMethod(ctx.session, objectNodeId, methodNodeId, inputVariants);
+    if (!result.isGood) throw new Error(`Method call failed: ${result.statusCodeText}`);
+    const variant = result.outputArguments[methodOutputIndex];
+    if (!variant) throw new Error(`Method has no output at index ${methodOutputIndex}`);
+    return { actual: variantToScalar(variant), label: method.alias };
+  }
+
   if (!condition.tagId) throw new Error("No tag selected");
   const tag = ctx.tags.get(condition.tagId);
   if (!tag) throw new Error("Tag not found");
-
   const nodeId = await resolveNodeIdFromTagReference(ctx.session, tag.node);
   const dataValue = await ctx.session.read({ nodeId, attributeId: AttributeIds.Value });
-  const actual = toTagValueDto(dataValue).value;
+  return { actual: toTagValueDto(dataValue).value, label: tag.alias };
+}
+
+async function evaluateCondition(
+  condition: WaitCondition,
+  ctx: RunContext,
+  baseline: ChangeBaseline
+): Promise<ConditionEvaluation> {
+  const { actual, label } = await readSubject(condition, ctx);
+
+  if (condition.comparison === "changed") {
+    // First poll of this step's execution just establishes the baseline -
+    // never satisfied on its own (there's nothing to have changed from yet).
+    if (baseline.value === undefined) {
+      baseline.value = actual;
+      return { ok: false, actual, expected: actual, describe: `${label} changed (baseline ${String(actual)})` };
+    }
+    const ok = actual !== baseline.value;
+    return {
+      ok,
+      actual,
+      expected: baseline.value,
+      describe: `${label} changed from ${String(baseline.value)} (actual: ${String(actual)})`,
+    };
+  }
 
   let expected: ScalarValue;
   if (condition.expectedSource === "tag") {
@@ -69,17 +127,24 @@ async function evaluateCondition(condition: WaitCondition, ctx: RunContext): Pro
     const expectedActual = toTagValueDto(expectedDataValue).value;
     if (expectedActual === null) throw new Error("Comparison tag has no value");
     expected = expectedActual;
+  } else if (condition.expectedSource === "stepOutput") {
+    if (!condition.expectedStepOutput) throw new Error("No step output selected for comparison");
+    const resolved = resolveStepOutputScalar(condition.expectedStepOutput, ctx);
+    if (resolved === null) throw new Error("Referenced step output has no value");
+    expected = resolved;
   } else {
     expected = condition.expectedValue.value;
   }
 
   const ok = compareValues(actual, expected, condition.comparison, condition.tolerance, condition.toleranceMode);
-  return { ok, actual, expected, describe: `${tag.alias} ${condition.comparison} ${String(expected)} (actual: ${String(actual)})` };
+  return { ok, actual, expected, describe: `${label} ${condition.comparison} ${String(expected)} (actual: ${String(actual)})` };
 }
 
 export async function executeWaitAssertStep(step: WaitAssertStep, ctx: RunContext): Promise<StepResult> {
   const startedAt = nowIso();
   const deadline = step.timeoutMs === null ? null : Date.now() + step.timeoutMs;
+  const baselineA: ChangeBaseline = { value: undefined };
+  const baselineB: ChangeBaseline = { value: undefined };
 
   while (true) {
     if (ctx.cancellationToken.isCancelled) {
@@ -94,8 +159,8 @@ export async function executeWaitAssertStep(step: WaitAssertStep, ctx: RunContex
       // cancellation so Stop is never blocked behind an in-flight read.
       const result = await raceWithCancellation(
         (async () => {
-          const a = await evaluateCondition(step.conditionA, ctx);
-          const b = step.conditionB ? await evaluateCondition(step.conditionB, ctx) : null;
+          const a = await evaluateCondition(step.conditionA, ctx, baselineA);
+          const b = step.conditionB ? await evaluateCondition(step.conditionB, ctx, baselineB) : null;
           return { a, b };
         })(),
         ctx.cancellationToken
@@ -124,7 +189,7 @@ export async function executeWaitAssertStep(step: WaitAssertStep, ctx: RunContex
         finishedAt,
         durationMs: durationMs(startedAt, finishedAt),
         actualValue: evalB ? describe : evalA.actual,
-        expectedValue: evalB ? undefined : evalA.expected,
+        expectedValue: evalB ? undefined : (evalA.expected ?? undefined),
       };
     }
 
@@ -138,7 +203,7 @@ export async function executeWaitAssertStep(step: WaitAssertStep, ctx: RunContex
         finishedAt,
         durationMs: durationMs(startedAt, finishedAt),
         actualValue: evalB ? describe : evalA.actual,
-        expectedValue: evalB ? undefined : evalA.expected,
+        expectedValue: evalB ? undefined : (evalA.expected ?? undefined),
         message: `Timed out after ${step.timeoutMs}ms waiting for ${describe}`,
       };
     }

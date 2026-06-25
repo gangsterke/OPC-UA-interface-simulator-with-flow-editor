@@ -5,6 +5,7 @@ import { ConnectionStatusBadge } from "./features/connection/ConnectionStatusBad
 import { CertificateTrustDialog } from "./features/certificates/CertificateTrustDialog";
 import { BrowseTree } from "./features/browse-tree/BrowseTree";
 import { TagsPanel } from "./features/tags/TagsPanel";
+import { MethodsPanel } from "./features/methods/MethodsPanel";
 import { SequenceBuilder } from "./features/sequence/SequenceBuilder";
 import { RunPanel } from "./features/run/RunPanel";
 import { ProjectToolbar } from "./features/project/ProjectToolbar";
@@ -29,6 +30,7 @@ function App() {
           <ConnectionPanel />
           <BrowseTree />
           <TagsPanel />
+          <MethodsPanel />
           <SequenceBuilder />
           <RunPanel />
         </div>

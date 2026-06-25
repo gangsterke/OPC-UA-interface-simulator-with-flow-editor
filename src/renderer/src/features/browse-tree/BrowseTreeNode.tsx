@@ -7,18 +7,21 @@ import type { DragPayload } from "../../dnd/drag-types";
 interface Props {
   node: BrowseTreeNodeModel;
   depth: number;
+  parentNodeId: string;
 }
 
-export function BrowseTreeNodeRow({ node, depth }: Props) {
+const DRAGGABLE_NODE_CLASSES = new Set(["Variable", "Method"]);
+
+export function BrowseTreeNodeRow({ node, depth, parentNodeId }: Props) {
   const [expanded, setExpanded] = useState(false);
   const [children, setChildren] = useState<BrowseTreeNodeModel[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const canExpand = node.hasChildrenHint;
-  const isDraggable = node.nodeClass === "Variable";
+  const isDraggable = DRAGGABLE_NODE_CLASSES.has(node.nodeClass);
 
-  const dragPayload: DragPayload = { source: "browseTree", node };
+  const dragPayload: DragPayload = { source: "browseTree", node, parentNodeId };
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: `browse-node:${node.nodeId}`,
     data: dragPayload,
@@ -41,6 +44,13 @@ export function BrowseTreeNodeRow({ node, depth }: Props) {
     setExpanded((value) => !value);
   }
 
+  const dragHint =
+    node.nodeClass === "Variable"
+      ? "Drag into Tags to define a tag"
+      : node.nodeClass === "Method"
+        ? "Drag into Methods to define a callable method"
+        : undefined;
+
   return (
     <div>
       <div
@@ -55,7 +65,7 @@ export function BrowseTreeNodeRow({ node, depth }: Props) {
           opacity: isDragging ? 0.4 : 1,
           cursor: isDraggable ? "grab" : "default",
         }}
-        title={isDraggable ? "Drag into Tags to define a tag" : undefined}
+        title={dragHint}
       >
         <span
           style={{ width: 14, display: "inline-block", cursor: canExpand ? "pointer" : "default" }}
@@ -73,7 +83,9 @@ export function BrowseTreeNodeRow({ node, depth }: Props) {
         <div style={{ paddingLeft: (depth + 1) * 16, color: "#999" }}>(no children)</div>
       )}
       {expanded &&
-        children?.map((child) => <BrowseTreeNodeRow key={child.nodeId} node={child} depth={depth + 1} />)}
+        children?.map((child) => (
+          <BrowseTreeNodeRow key={child.nodeId} node={child} depth={depth + 1} parentNodeId={node.nodeId} />
+        ))}
     </div>
   );
 }

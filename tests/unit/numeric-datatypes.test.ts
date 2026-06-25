@@ -73,16 +73,25 @@ describe("numeric datatypes through write + wait-assert", () => {
       const tag: Tag = { id: "tag-1", alias: "Int16Tag", node: attrs.node, dataType: attrs.dataType };
 
       const passSteps: SequenceStep[] = [
-        { id: "step-1", kind: "write", tagId: tag.id, value: { type: "number", value: 11 }, enabled: true },
+        {
+          id: "step-1",
+          kind: "write",
+          tagId: tag.id,
+          value: { source: "constant", value: { type: "number", value: 11 } },
+          enabled: true,
+        },
         {
           id: "step-2",
           kind: "waitAssert",
           conditionA: {
+            subjectSource: "tag",
             tagId: tag.id,
+            methodSubject: { methodId: null, methodOutputIndex: 0, methodInputArguments: [] },
             comparison: "equals",
             expectedSource: "constant",
             expectedValue: { type: "number", value: 11 },
             expectedTagId: null,
+            expectedStepOutput: null,
           },
           conditionB: null,
           combinator: "AND",
@@ -104,11 +113,14 @@ describe("numeric datatypes through write + wait-assert", () => {
           id: "step-1",
           kind: "waitAssert",
           conditionA: {
+            subjectSource: "tag",
             tagId: tag.id,
+            methodSubject: { methodId: null, methodOutputIndex: 0, methodInputArguments: [] },
             comparison: "equals",
             expectedSource: "constant",
             expectedValue: { type: "number", value: 999 },
             expectedTagId: null,
+            expectedStepOutput: null,
           },
           conditionB: null,
           combinator: "AND",
@@ -181,16 +193,25 @@ describe("numeric datatypes through write + wait-assert", () => {
       const tag: Tag = { id: "tag-1", alias: "RealTag", node: attrs.node, dataType: attrs.dataType };
 
       const passSteps: SequenceStep[] = [
-        { id: "step-1", kind: "write", tagId: tag.id, value: { type: "number", value: 11.5 }, enabled: true },
+        {
+          id: "step-1",
+          kind: "write",
+          tagId: tag.id,
+          value: { source: "constant", value: { type: "number", value: 11.5 } },
+          enabled: true,
+        },
         {
           id: "step-2",
           kind: "waitAssert",
           conditionA: {
+            subjectSource: "tag",
             tagId: tag.id,
+            methodSubject: { methodId: null, methodOutputIndex: 0, methodInputArguments: [] },
             comparison: "tolerance",
             expectedSource: "constant",
             expectedValue: { type: "number", value: 11.5 },
             expectedTagId: null,
+            expectedStepOutput: null,
             tolerance: 0.01,
             toleranceMode: "absolute",
           },
@@ -214,11 +235,14 @@ describe("numeric datatypes through write + wait-assert", () => {
           id: "step-1",
           kind: "waitAssert",
           conditionA: {
+            subjectSource: "tag",
             tagId: tag.id,
+            methodSubject: { methodId: null, methodOutputIndex: 0, methodInputArguments: [] },
             comparison: "equals",
             expectedSource: "constant",
             expectedValue: { type: "number", value: 999 },
             expectedTagId: null,
+            expectedStepOutput: null,
           },
           conditionB: null,
           combinator: "AND",

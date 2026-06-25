@@ -1,7 +1,7 @@
 import { useSequenceStore } from "../sequence-store";
 import { useTagsStore } from "../../tags/tags-store";
 import { TagSelector } from "../TagSelector";
-import { LiteralValueInput } from "../LiteralValueInput";
+import { ValueSourceEditor } from "../ValueSourceEditor";
 import { literalKindForDataType, defaultLiteralForKind } from "../literal-value";
 import type { WriteStep } from "@shared/models/sequence-step";
 
@@ -13,9 +13,11 @@ export function WriteStepCard({ step }: { step: WriteStep }) {
   function handleTagChange(tagId: string): void {
     setStepTag(step.id, tagId);
     const nextTag = useTagsStore.getState().tags.find((t) => t.id === tagId);
-    const expectedKind = literalKindForDataType(nextTag?.dataType);
-    if (expectedKind !== step.value.type) {
-      updateStep(step.id, { value: defaultLiteralForKind(expectedKind) });
+    if (step.value.source === "constant") {
+      const expectedKind = literalKindForDataType(nextTag?.dataType);
+      if (expectedKind !== step.value.value.type) {
+        updateStep(step.id, { value: { source: "constant", value: defaultLiteralForKind(expectedKind) } });
+      }
     }
   }
 
@@ -24,8 +26,14 @@ export function WriteStepCard({ step }: { step: WriteStep }) {
       <span>Write</span>
       <TagSelector stepId={step.id} fieldPath="tagId" tagId={step.tagId} onChange={handleTagChange} />
       <span>=</span>
-      <LiteralValueInput value={step.value} onChange={(value) => updateStep(step.id, { value })} />
-      {tag && <span style={{ fontSize: 12, color: "#999" }}>({tag.dataType})</span>}
+      <ValueSourceEditor
+        stepId={step.id}
+        dndFieldId="write.value"
+        label="value"
+        dataType={tag?.dataType ?? "Unknown"}
+        source={step.value}
+        onChange={(value) => updateStep(step.id, { value })}
+      />
     </div>
   );
 }

@@ -4,9 +4,10 @@ import type { CertificateSummary } from "./models/certificate-summary";
 import type { BrowseTreeNode } from "./models/browse-tree-node";
 import type { NodeAttributesSummary, TagValueDto } from "./models/node-attributes";
 import type { Tag, TagNodeReference } from "./models/tag";
-import type { SequenceStep } from "./models/sequence-step";
+import type { SequenceStep, TagLiteralValue } from "./models/sequence-step";
 import type { StepResult, RunSummary, RunLogLine } from "./models/run-result";
 import type { Project } from "./models/project";
+import type { MethodArgumentMeta, MethodDefinition } from "./models/method";
 
 export type ConnectResult =
   | { ok: true }
@@ -37,8 +38,26 @@ export interface Api {
   tag: {
     readValue: (reference: TagNodeReference) => Promise<TagValueDto>;
   };
+  method: {
+    readArguments: (
+      objectNodeId: string,
+      methodNodeId: string
+    ) => Promise<{
+      objectNode: TagNodeReference;
+      methodNode: TagNodeReference;
+      inputArguments: MethodArgumentMeta[];
+      outputArguments: MethodArgumentMeta[];
+    }>;
+    testCall: (
+      method: MethodDefinition,
+      inputArguments: TagLiteralValue[]
+    ) => Promise<
+      | { ok: true; outputs: { name: string; display: string }[] }
+      | { ok: false; error: string }
+    >;
+  };
   run: {
-    start: (steps: SequenceStep[], tags: Tag[]) => Promise<{ runId: string }>;
+    start: (steps: SequenceStep[], tags: Tag[], methods: MethodDefinition[]) => Promise<{ runId: string }>;
     cancel: (runId: string) => Promise<{ ok: boolean }>;
     onStepStarted: (callback: (event: { runId: string; stepIndex: number; step: SequenceStep }) => void) => () => void;
     onStepProgress: (

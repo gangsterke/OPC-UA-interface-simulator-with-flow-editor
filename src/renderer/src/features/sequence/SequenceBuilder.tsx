@@ -4,11 +4,13 @@ import {
   createDefaultWriteStep,
   createDefaultWaitAssertStep,
   createDefaultDelayStep,
+  createDefaultCallMethodStep,
 } from "./sequence-store";
 import { StepCardShell } from "./steps/StepCardShell";
 import { WriteStepCard } from "./steps/WriteStepCard";
 import { WaitAssertStepCard } from "./steps/WaitAssertStepCard";
 import { DelayStepCard } from "./steps/DelayStepCard";
+import { CallMethodStepCard } from "./steps/CallMethodStepCard";
 
 export function SequenceBuilder() {
   const steps = useSequenceStore((s) => s.steps);
@@ -24,6 +26,7 @@ export function SequenceBuilder() {
             {step.kind === "write" && <WriteStepCard step={step} />}
             {step.kind === "waitAssert" && <WaitAssertStepCard step={step} />}
             {step.kind === "delay" && <DelayStepCard step={step} />}
+            {step.kind === "callMethod" && <CallMethodStepCard step={step} />}
           </StepCardShell>
         ))}
       </SortableContext>
@@ -34,6 +37,7 @@ export function SequenceBuilder() {
         <button onClick={() => addStep(createDefaultWriteStep())}>+ Write</button>
         <button onClick={() => addStep(createDefaultWaitAssertStep())}>+ Wait/Assert</button>
         <button onClick={() => addStep(createDefaultDelayStep())}>+ Delay</button>
+        <button onClick={() => addStep(createDefaultCallMethodStep())}>+ Call Method</button>
       </div>
     </fieldset>
   );

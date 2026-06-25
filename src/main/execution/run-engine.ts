@@ -1,8 +1,9 @@
 import { EventEmitter } from "node:events";
 import { randomUUID } from "node:crypto";
-import type { ClientSession } from "node-opcua";
+import type { ClientSession, Variant } from "node-opcua";
 import type { SequenceStep } from "@shared/models/sequence-step";
 import type { Tag } from "@shared/models/tag";
+import type { MethodDefinition } from "@shared/models/method";
 import type { StepResult, RunSummary } from "@shared/models/run-result";
 import { CancellationToken } from "./run-context";
 import type { RunContext, StepExecutor } from "./step-executors/step-executor";
@@ -10,6 +11,7 @@ import { nowIso, durationMs } from "./step-executors/step-executor";
 import { executeWriteStep } from "./step-executors/write-step";
 import { executeWaitAssertStep } from "./step-executors/wait-assert-step";
 import { executeDelayStep } from "./step-executors/delay-step";
+import { executeCallMethodStep } from "./step-executors/call-method-step";
 
 // Registry pattern (plan section 5.2): adding a future step kind is additive -
 // one new executor + one new registry entry, no existing branches touched.
@@ -17,6 +19,7 @@ const registry: Record<SequenceStep["kind"], StepExecutor> = {
   write: { execute: executeWriteStep as StepExecutor["execute"] },
   waitAssert: { execute: executeWaitAssertStep as StepExecutor["execute"] },
   delay: { execute: executeDelayStep as StepExecutor["execute"] },
+  callMethod: { execute: executeCallMethodStep as StepExecutor["execute"] },
 };
 
 function syntheticResult(step: SequenceStep, outcome: "skipped" | "cancelled", message?: string): StepResult {
@@ -33,7 +36,7 @@ export class RunEngine extends EventEmitter {
     return this.currentRunId !== null;
   }
 
-  async startRun(session: ClientSession, steps: SequenceStep[], tags: Tag[]): Promise<string> {
+  async startRun(session: ClientSession, steps: SequenceStep[], tags: Tag[], methods: MethodDefinition[] = []): Promise<string> {
     if (this.isRunning()) {
       throw new Error("A run is already in progress");
     }
@@ -43,9 +46,10 @@ export class RunEngine extends EventEmitter {
     this.cancellationToken = cancellationToken;
 
     const tagsById = new Map(tags.map((t) => [t.id, t]));
+    const methodsById = new Map(methods.map((m) => [m.id, m]));
 
     // Fire-and-forget: progress/results stream via events, not the returned promise.
-    void this.runSteps(runId, session, steps, tagsById, cancellationToken).finally(() => {
+    void this.runSteps(runId, session, steps, tagsById, methodsById, cancellationToken).finally(() => {
       if (this.currentRunId === runId) {
         this.currentRunId = null;
         this.cancellationToken = null;
@@ -76,10 +80,12 @@ export class RunEngine extends EventEmitter {
     session: ClientSession,
     steps: SequenceStep[],
     tagsById: Map<string, Tag>,
+    methodsById: Map<string, MethodDefinition>,
     cancellationToken: CancellationToken
   ): Promise<void> {
     const startedAt = nowIso();
     const stepResults: StepResult[] = [];
+    const methodOutputs = new Map<string, Variant[]>();
     let aborted = false;
 
     for (let index = 0; index < steps.length; index++) {
@@ -112,6 +118,8 @@ export class RunEngine extends EventEmitter {
       const ctx: RunContext = {
         session,
         tags: tagsById,
+        methods: methodsById,
+        methodOutputs,
         cancellationToken,
         onProgress: (info) => this.emit("stepProgress", { runId, stepIndex: index, ...info }),
       };

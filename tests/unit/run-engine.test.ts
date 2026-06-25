@@ -73,16 +73,25 @@ describe("RunEngine", () => {
       const tag: Tag = { id: "tag-1", alias: "Counter", node: attrs.node, dataType: attrs.dataType };
 
       const steps: SequenceStep[] = [
-        { id: "step-1", kind: "write", tagId: tag.id, value: { type: "number", value: 7 }, enabled: true },
+        {
+          id: "step-1",
+          kind: "write",
+          tagId: tag.id,
+          value: { source: "constant", value: { type: "number", value: 7 } },
+          enabled: true,
+        },
         {
           id: "step-2",
           kind: "waitAssert",
           conditionA: {
+            subjectSource: "tag",
             tagId: tag.id,
+            methodSubject: { methodId: null, methodOutputIndex: 0, methodInputArguments: [] },
             comparison: "equals",
             expectedSource: "constant",
             expectedValue: { type: "number", value: 7 },
             expectedTagId: null,
+            expectedStepOutput: null,
           },
           conditionB: null,
           combinator: "AND",
@@ -158,11 +167,14 @@ describe("RunEngine", () => {
           id: "step-1",
           kind: "waitAssert",
           conditionA: {
+            subjectSource: "tag",
             tagId: tag.id,
+            methodSubject: { methodId: null, methodOutputIndex: 0, methodInputArguments: [] },
             comparison: "equals",
             expectedSource: "constant",
             expectedValue: { type: "number", value: 999 }, // never true - deliberately too short timeout
             expectedTagId: null,
+            expectedStepOutput: null,
           },
           conditionB: null,
           combinator: "AND",
@@ -237,11 +249,14 @@ describe("RunEngine", () => {
           id: "step-1",
           kind: "waitAssert",
           conditionA: {
+            subjectSource: "tag",
             tagId: tag.id,
+            methodSubject: { methodId: null, methodOutputIndex: 0, methodInputArguments: [] },
             comparison: "equals",
             expectedSource: "constant",
             expectedValue: { type: "boolean", value: true },
             expectedTagId: null,
+            expectedStepOutput: null,
           },
           conditionB: null,
           combinator: "AND",

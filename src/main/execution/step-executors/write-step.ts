@@ -4,7 +4,8 @@ import type { StepResult } from "@shared/models/run-result";
 import type { RunContext } from "./step-executor";
 import { nowIso, durationMs } from "./step-executor";
 import { resolveNodeIdFromTagReference } from "../../opcua/node-id-utils";
-import { toVariant } from "../../opcua/value-serialization";
+import { variantToScalar } from "../../opcua/value-serialization";
+import { resolveValueSourceVariant } from "./value-source";
 
 function errorResult(step: WriteStep, startedAt: string, message: string): StepResult {
   const finishedAt = nowIso();
@@ -20,7 +21,7 @@ export async function executeWriteStep(step: WriteStep, ctx: RunContext): Promis
 
   try {
     const nodeId = await resolveNodeIdFromTagReference(ctx.session, tag.node);
-    const variant = toVariant(step.value, tag.dataType);
+    const variant = await resolveValueSourceVariant(step.value, tag.dataType, ctx);
     const statusCode = await ctx.session.write({ nodeId, attributeId: AttributeIds.Value, value: { value: variant } });
     const finishedAt = nowIso();
 
@@ -32,7 +33,7 @@ export async function executeWriteStep(step: WriteStep, ctx: RunContext): Promis
         startedAt,
         finishedAt,
         durationMs: durationMs(startedAt, finishedAt),
-        actualValue: step.value.value,
+        actualValue: variantToScalar(variant),
       };
     }
     return {

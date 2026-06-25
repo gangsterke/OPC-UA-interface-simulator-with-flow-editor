@@ -13,9 +13,11 @@ import {
 import { arrayMove, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import type { ReactNode } from "react";
 import { useTagsStore } from "../features/tags/tags-store";
+import { useMethodsStore } from "../features/methods/methods-store";
 import { useSequenceStore } from "../features/sequence/sequence-store";
 import {
   TAGS_PANEL_DROP_ZONE_ID,
+  METHODS_PANEL_DROP_ZONE_ID,
   STEP_TAG_DROP_PREFIX,
   STEP_TAG_DROP_FIELD_SEPARATOR,
   type DragPayload,
@@ -23,7 +25,9 @@ import {
 
 function labelForPayload(payload: DragPayload | undefined): string | null {
   if (!payload) return null;
-  if (payload.source === "browseTree") return `🔢 ${payload.node.displayName}`;
+  if (payload.source === "browseTree") {
+    return payload.node.nodeClass === "Method" ? `ƒ ${payload.node.displayName}` : `🔢 ${payload.node.displayName}`;
+  }
   return `⠿ ${payload.tag.alias}`;
 }
 
@@ -38,8 +42,12 @@ function asCustomPayload(data: Record<string, unknown> | undefined): DragPayload
 
 export function DndProvider({ children }: { children: ReactNode }) {
   const addTagFromNode = useTagsStore((s) => s.addTagFromNode);
+  const addMethodFromNode = useMethodsStore((s) => s.addMethodFromNode);
   const setStepTag = useSequenceStore((s) => s.setStepTag);
+  const setWriteValueTagSource = useSequenceStore((s) => s.setWriteValueTagSource);
   const setConditionTagField = useSequenceStore((s) => s.setConditionTagField);
+  const setInputArgumentSource = useSequenceStore((s) => s.setInputArgumentSource);
+  const setConditionMethodInputSource = useSequenceStore((s) => s.setConditionMethodInputSource);
   const steps = useSequenceStore((s) => s.steps);
   const reorderSteps = useSequenceStore((s) => s.reorderSteps);
   const [activeLabel, setActiveLabel] = useState<string | null>(null);
@@ -72,10 +80,28 @@ export function DndProvider({ children }: { children: ReactNode }) {
       return;
     }
 
+    if (payload?.source === "browseTree" && over.id === METHODS_PANEL_DROP_ZONE_ID) {
+      addMethodFromNode(payload.node, payload.parentNodeId);
+      return;
+    }
+
     if (payload?.source === "tagsPanel" && typeof over.id === "string" && over.id.startsWith(STEP_TAG_DROP_PREFIX)) {
       const [stepId, fieldPath] = over.id.slice(STEP_TAG_DROP_PREFIX.length).split(STEP_TAG_DROP_FIELD_SEPARATOR);
       if (fieldPath === "tagId") {
         setStepTag(stepId, payload.tag.id);
+      } else if (fieldPath === "write.value.tagId") {
+        setWriteValueTagSource(stepId, payload.tag.id);
+      } else if (fieldPath.startsWith("callMethod.")) {
+        const argumentIndex = Number(fieldPath.split(".")[1]);
+        setInputArgumentSource(stepId, argumentIndex, { source: "tag", tagId: payload.tag.id, fieldPath: [] });
+      } else if (fieldPath.startsWith("conditionA.methodSubject.") || fieldPath.startsWith("conditionB.methodSubject.")) {
+        const [prefix, , indexText] = fieldPath.split(".");
+        const which = prefix === "conditionA" ? "A" : "B";
+        setConditionMethodInputSource(stepId, which, Number(indexText), {
+          source: "tag",
+          tagId: payload.tag.id,
+          fieldPath: [],
+        });
       } else {
         setConditionTagField(stepId, fieldPath, payload.tag.id);
       }

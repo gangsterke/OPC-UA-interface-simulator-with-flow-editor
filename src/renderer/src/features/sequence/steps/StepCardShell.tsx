@@ -8,6 +8,7 @@ const KIND_LABELS: Record<SequenceStep["kind"], string> = {
   write: "Write",
   waitAssert: "Wait/Assert",
   delay: "Delay",
+  callMethod: "Call Method",
 };
 
 export function StepCardShell({

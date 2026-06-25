@@ -23,6 +23,10 @@ export const IpcChannels = {
   Tag: {
     ReadValue: "tag:readValue",
   },
+  Method: {
+    ReadArguments: "method:readArguments",
+    TestCall: "method:testCall",
+  },
   Run: {
     Start: "run:start",
     Cancel: "run:cancel",

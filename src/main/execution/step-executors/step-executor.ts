@@ -1,12 +1,19 @@
-import type { ClientSession } from "node-opcua";
+import type { ClientSession, Variant } from "node-opcua";
 import type { SequenceStep } from "@shared/models/sequence-step";
 import type { Tag } from "@shared/models/tag";
+import type { MethodDefinition } from "@shared/models/method";
 import type { StepResult } from "@shared/models/run-result";
 import type { CancellationToken } from "../run-context";
 
 export interface RunContext {
   session: ClientSession;
   tags: Map<string, Tag>;
+  methods: Map<string, MethodDefinition>;
+  // Raw Variants (not scalars) captured from each CallMethodStep executed so
+  // far in this run, keyed by step id - lets a later step's input argument
+  // source from an earlier step's output without round-tripping through a
+  // real OPC UA tag (see MethodArgumentValueSource's "stepOutput" variant).
+  methodOutputs: Map<string, Variant[]>;
   cancellationToken: CancellationToken;
   onProgress: (info: { elapsedMs: number; lastValue?: unknown }) => void;
 }
