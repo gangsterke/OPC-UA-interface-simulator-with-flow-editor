@@ -84,7 +84,7 @@
             <Reference ReferenceType="HasTypeDefinition">i=61</Reference>
         </References>
     </UAObject>
-    <UAVariable DataType="ns=1;s=Type_Alarm" ValueRank="1" NodeId="ns=1;s=Enterprise/PackML/Admin/Alarms" ArrayDimensions="200" BrowseName="1:Enterprise/PackML/Admin/Alarms" ParentNodeId="ns=1;s=Enterprise/PackML/Admin" SymbolicName="FL_A1_NS_ANO01_PackML_Admin_Alarms">
+    <UAVariable DataType="ns=1;s=Type_Alarm" ValueRank="1" NodeId="ns=1;s=Enterprise/PackML/Admin/Alarms" ArrayDimensions="200" BrowseName="1:Enterprise/PackML/Admin/Alarms" ParentNodeId="ns=1;s=Enterprise/PackML/Admin" SymbolicName="PackML_Admin_Alarms">
         <DisplayName>Alarms</DisplayName>
         <References>
             <Reference ReferenceType="HasComponent" IsForward="false">ns=1;s=Enterprise/PackML/Admin</Reference>
