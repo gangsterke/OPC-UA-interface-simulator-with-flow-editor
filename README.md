@@ -4,6 +4,15 @@ A desktop app for testing an IT↔PLC interface over OPC UA. Connect to any OPC 
 
 Built and tested against a Siemens S7-1500, but the app talks plain OPC UA - it doesn't assume any particular PLC vendor.
 
+<img width="1163" height="342" alt="image" src="https://github.com/user-attachments/assets/65b7a340-28fa-4d49-b0ca-6d2b8910d9e4" />
+
+<img width="1581" height="793" alt="image" src="https://github.com/user-attachments/assets/1d3e17e3-3ea8-499d-b19d-293e149cd2b7" />
+
+
+<img width="1585" height="988" alt="image" src="https://github.com/user-attachments/assets/a2c3f814-21c0-4024-8c03-a0d4f2bcba18" />
+
+<img width="610" height="457" alt="image" src="https://github.com/user-attachments/assets/13f57e7f-98e1-4c53-bff8-df7d257c834d" />
+
 ## Features
 
 - **Connection config** - endpoint URL, security policy/mode, anonymous or username/password auth
